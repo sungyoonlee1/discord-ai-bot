@@ -120,18 +120,21 @@ async def 인증(ctx, item: str):
     now = datetime.now(KST)
 
     if item == "planner":
-        if now.hour >= 9:
-            result = await analyze_image_and_feedback(img_bytes)
-            return await ctx.send(f"❌ 9시 마감! 페이백은 불가합니다.\n📊 분석결과: {result}")
-        save_submission(uid)
-        add_payback(uid, item)
-        result = await analyze_image_and_feedback(img_bytes)
-        if "error" in result:
-            return await ctx.send(f"❌ GPT 분석 실패: {result['error']}")
-        schedule_auth(ctx.author, ctx.channel, "점심 전", result["lunch"])
-        schedule_auth(ctx.author, ctx.channel, "저녁 전", result["dinner"])
-        schedule_auth(ctx.author, ctx.channel, "공부 종료 전", result["end"])
-        return await ctx.send(f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}")
+    now = datetime.now(KST)
+    if not (now.hour == 8 or (now.hour == 9 and now.minute == 0)):
+        return await ctx.send("❌ 플래너 인증은 **오전 8시 ~ 9시 정각까지만** 가능합니다.")
+
+    result = await analyze_times(img_bytes)
+    if "error" in result:
+        return await ctx.send(f"❌ GPT 분석 실패: {result['error']}")
+
+    save_submission(uid)
+    add_payback(uid, item)
+    schedule_auth(ctx.author, ctx.channel, "점심 전", result["lunch"])
+    schedule_auth(ctx.author, ctx.channel, "저녁 전", result["dinner"])
+    schedule_auth(ctx.author, ctx.channel, "공부 종료 전", result["end"])
+    return await ctx.send(f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}")
+
     else:
         save_submission(uid)
         add_payback(uid, item)
