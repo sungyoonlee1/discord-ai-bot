@@ -1,0 +1,8 @@
+# ✅ requirements.txt
+discord.py
+openai>=1.0.0
+python-dotenv
+pillow
+pytesseract
+apscheduler
+pytz
