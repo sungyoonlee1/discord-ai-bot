@@ -1,0 +1,147 @@
+# ✅ main.py
+import discord
+from discord.ext import commands
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.date import DateTrigger
+from datetime import datetime, timedelta
+import pytz
+import os
+import json
+import asyncio
+from dotenv import load_dotenv
+from ocr_analyzer import analyze_image_and_feedback
+
+load_dotenv()
+TOKEN = os.getenv("DISCORD_BOT_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+scheduler = AsyncIOScheduler()
+
+KST = pytz.timezone("Asia/Seoul")
+SUBMIT_FILE = "submitted_users.json"
+PAYBACK_FILE = "payback_records.json"
+ALLOWED_ITEMS = ["planner", "lunch", "dinner", "checkout"]
+
+def load_json(file):
+    return json.load(open(file, encoding="utf-8")) if os.path.exists(file) else {}
+
+def save_json(file, data):
+    with open(file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def save_submission(user_id):
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    data = load_json(SUBMIT_FILE)
+    if today not in data: data[today] = []
+    if user_id not in data[today]:
+        data[today].append(user_id)
+    save_json(SUBMIT_FILE, data)
+
+def add_payback(user_id, item):
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    data = load_json(PAYBACK_FILE)
+    if user_id not in data: data[user_id] = {}
+    if today not in data[user_id]:
+        data[user_id][today] = {"total": 0, "items": []}
+    rec = data[user_id][today]
+    if rec["total"] < 1000 and item not in rec["items"]:
+        rec["items"].append(item)
+        rec["total"] += 250
+    save_json(PAYBACK_FILE, data)
+
+def schedule_auth(user, channel, tag, time_str):
+    now = datetime.now(KST)
+    try:
+        target = datetime.strptime(time_str, "%H:%M").replace(
+            year=now.year, month=now.month, day=now.day, tzinfo=KST
+        ) - timedelta(minutes=3)
+        if target > now:
+            scheduler.add_job(send_auth, DateTrigger(run_date=target), args=[user, channel, tag])
+    except:
+        pass
+
+async def send_auth(user, channel, tag):
+    await channel.send(f"{user.mention}님, 📸 **{tag} 인증 시간**입니다! 사진을 보내주세요.")
+
+async def check_missed():
+    await bot.wait_until_ready()
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    submitted = load_json(SUBMIT_FILE).get(today, [])
+    for g in bot.guilds:
+        for m in g.members:
+            if m.bot: continue
+            if str(m.id) not in submitted:
+                ch = discord.utils.get(g.text_channels, name=f"{m.name}-비서")
+                if ch:
+                    await ch.send(f"{m.mention}님, 오늘 오전 9시까지 플래너 미제출로 **페이백 제외** ❌")
+
+@bot.event
+async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
+    scheduler.add_job(check_missed, "cron", hour=9, minute=0, timezone=KST)
+    scheduler.start()
+
+@bot.event
+async def on_member_join(member):
+    guild = member.guild
+    name = f"{member.name}-비서"
+    cat = discord.utils.get(guild.categories, name="📁 학생비서")
+    if not cat:
+        cat = await guild.create_category("📁 학생비서")
+    perms = {
+        guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        member: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    }
+    ch = await guild.create_text_channel(name=name, category=cat, overwrites=perms)
+    await ch.send(f"{member.mention}님, 전용 공부 비서 채널이 생성됐습니다.\n📸 **아침 9시 전까지 플래너를 제출**하면 페이백 대상이 됩니다!")
+
+@bot.command()
+async def 페이백(ctx):
+    uid = str(ctx.author.id)
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    data = load_json(PAYBACK_FILE).get(uid, {})
+    amt = data.get(today, {}).get("total", 0)
+    await ctx.send(f"💸 오늘 페이백: **{amt}원**")
+
+@bot.command()
+async def 인증(ctx, item: str):
+    item = item.lower()
+    uid = str(ctx.author.id)
+    if item not in ALLOWED_ITEMS:
+        return await ctx.send("❌ 올바른 항목: planner, lunch, dinner, checkout")
+    if not ctx.message.attachments:
+        return await ctx.send("❌ 사진을 함께 첨부해주세요.")
+    img_bytes = await ctx.message.attachments[0].read()
+    now = datetime.now(KST)
+
+    if item == "planner":
+        if now.hour >= 9:
+            result = await analyze_image_and_feedback(img_bytes)
+            return await ctx.send(f"❌ 9시 마감! 페이백은 불가합니다.\n📊 분석결과: {result}")
+        save_submission(uid)
+        add_payback(uid, item)
+        result = await analyze_image_and_feedback(img_bytes)
+        if "error" in result:
+            return await ctx.send(f"❌ GPT 분석 실패: {result['error']}")
+        schedule_auth(ctx.author, ctx.channel, "점심 전", result["lunch"])
+        schedule_auth(ctx.author, ctx.channel, "저녁 전", result["dinner"])
+        schedule_auth(ctx.author, ctx.channel, "공부 종료 전", result["end"])
+        return await ctx.send(f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}")
+    else:
+        save_submission(uid)
+        add_payback(uid, item)
+        return await ctx.send(f"✅ `{item}` 인증 완료 + 페이백 적용!")
+
+@bot.event
+async def on_message(msg):
+    if msg.author.bot:
+        return
+    await bot.process_commands(msg)
+
+if __name__ == "__main__":
+    asyncio.run(bot.start(TOKEN))
