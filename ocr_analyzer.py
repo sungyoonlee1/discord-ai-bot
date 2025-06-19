@@ -1,11 +1,12 @@
 import openai
 import base64
 import json
+import os
+import re
 
 from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -19,6 +20,13 @@ def convert_image_to_base64(image_bytes):
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
     except Exception:
         return None
+
+
+def extract_json(text):
+    match = re.search(r'\{.*?\}', text, re.DOTALL)
+    if match:
+        return match.group()
+    return None
 
 
 async def analyze_image_and_feedback(image_bytes):
@@ -54,19 +62,18 @@ async def analyze_image_and_feedback(image_bytes):
             max_tokens=300
         )
 
-        # 응답 내용 추출 및 로그
         content = response.choices[0].message.content.strip()
         print("🧠 GPT 응답:", content)
 
-        # 비어있는 응답 체크
         if not content:
             return {"error": "GPT 응답이 비어 있습니다."}
 
-        # JSON 파싱
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError:
-            return {"error": f"응답을 JSON으로 해석할 수 없습니다:\n{content}"}
+        json_text = extract_json(content)
+        if not json_text:
+            return {"error": f"응답에서 JSON을 찾을 수 없습니다:\n{content}"}
+
+        return json.loads(json_text)
 
     except Exception as e:
         return {"error": str(e)}
+
