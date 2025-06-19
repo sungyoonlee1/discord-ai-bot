@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
 
 def convert_image_to_base64(image_bytes):
     try:
@@ -19,6 +19,7 @@ def convert_image_to_base64(image_bytes):
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
     except Exception:
         return None
+
 
 async def analyze_image_and_feedback(image_bytes):
     b64 = convert_image_to_base64(image_bytes)
@@ -52,10 +53,20 @@ async def analyze_image_and_feedback(image_bytes):
             ],
             max_tokens=300
         )
+
+        # 응답 내용 추출 및 로그
         content = response.choices[0].message.content.strip()
+        print("🧠 GPT 응답:", content)
+
+        # 비어있는 응답 체크
         if not content:
             return {"error": "GPT 응답이 비어 있습니다."}
 
-        return json.loads(content)
+        # JSON 파싱
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            return {"error": f"응답을 JSON으로 해석할 수 없습니다:\n{content}"}
+
     except Exception as e:
         return {"error": str(e)}
