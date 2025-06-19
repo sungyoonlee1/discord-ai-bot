@@ -1,4 +1,5 @@
 # ✅ main.py
+공지사항채널ID = 1381470992551120982
 import discord
 from discord.ext import commands
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -53,6 +54,11 @@ def add_payback(user_id, item):
         rec["total"] += 250
     save_json(PAYBACK_FILE, data)
 
+async def send_announcement(channel_id, message):
+    channel = bot.get_channel(channel_id)
+    if channel:
+        await channel.send(message)
+
 def schedule_auth(user, channel, tag, time_str):
     now = datetime.now(KST)
     try:
@@ -83,6 +89,10 @@ async def check_missed():
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
     scheduler.add_job(check_missed, "cron", hour=9, minute=0, timezone=KST)
+    scheduler.add_job(send_announcement, "cron", hour=8, minute=0, timezone=KST,
+                      args=[공지사항채널ID, "📢 플래너 인증 시간입니다! 오전 9시까지 제출해 주세요."])
+    scheduler.add_job(send_announcement, "cron", hour=9, minute=0, timezone=KST,
+                      args=[공지사항채널ID, "⛔ 오전 9시 마감! 이제 제출해도 페이백은 불가합니다."])
     scheduler.start()
 
 @bot.event
@@ -112,29 +122,32 @@ async def 페이백(ctx):
 async def 인증(ctx, item: str):
     item = item.lower()
     uid = str(ctx.author.id)
+
     if item not in ALLOWED_ITEMS:
         return await ctx.send("❌ 올바른 항목: planner, lunch, dinner, checkout")
+    
     if not ctx.message.attachments:
         return await ctx.send("❌ 사진을 함께 첨부해주세요.")
+    
     img_bytes = await ctx.message.attachments[0].read()
     now = datetime.now(KST)
 
     if item == "planner":
-    now = datetime.now(KST)
-    if not (now.hour == 8 or (now.hour == 9 and now.minute == 0)):
-        return await ctx.send("❌ 플래너 인증은 **오전 8시 ~ 9시 정각까지만** 가능합니다.")
+        now = datetime.now(KST)
+        if not (now.hour == 8 or (now.hour == 9 and now.minute == 0)):
+            return await ctx.send("❌ 플래너 인증은 **오전 8시 ~ 9시 정각까지만** 가능합니다.")
 
-    result = await analyze_times(img_bytes)
-    if "error" in result:
-        return await ctx.send(f"❌ GPT 분석 실패: {result['error']}")
+        result = await analyze_image_and_feedback(img_bytes)
+        if "error" in result:
+            return await ctx.send(f"❌ GPT 분석 실패: {result['error']}")
 
-    save_submission(uid)
-    add_payback(uid, item)
-    schedule_auth(ctx.author, ctx.channel, "점심 전", result["lunch"])
-    schedule_auth(ctx.author, ctx.channel, "저녁 전", result["dinner"])
-    schedule_auth(ctx.author, ctx.channel, "공부 종료 전", result["end"])
-    return await ctx.send(f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}")
-
+        save_submission(uid)
+        add_payback(uid, item)
+        schedule_auth(ctx.author, ctx.channel, "점심 전", result["lunch"])
+        schedule_auth(ctx.author, ctx.channel, "저녁 전", result["dinner"])
+        schedule_auth(ctx.author, ctx.channel, "공부 종료 전", result["end"])
+        return await ctx.send(f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}")
+    
     else:
         save_submission(uid)
         add_payback(uid, item)
