@@ -9,6 +9,7 @@ import pytz
 import os
 import json
 import asyncio
+import random
 from dotenv import load_dotenv
 from ocr_analyzer import analyze_image_and_feedback
 
@@ -59,19 +60,25 @@ async def send_announcement(channel_id, message):
     if channel:
         await channel.send(message)
 
-def schedule_auth(user, channel, tag, time_str):
-    now = datetime.now(KST)
-    try:
-        target = datetime.strptime(time_str, "%H:%M").replace(
-            year=now.year, month=now.month, day=now.day, tzinfo=KST
-        ) - timedelta(minutes=3)
-        if target > now:
-            scheduler.add_job(send_auth, DateTrigger(run_date=target), args=[user, channel, tag])
-    except:
-        pass
-
 async def send_auth(user, channel, tag):
-    await channel.send(f"{user.mention}님, 📸 **{tag} 인증 시간**입니다! 사진을 보내주세요.")
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    submitted = load_json(SUBMIT_FILE).get(today, {})
+    user_id = str(user.id)
+
+    # 기본 메시지
+    base_msg = f"{user.mention}님, 📸 **{tag} 인증 시간**입니다! 사진을 보내주세요."
+
+    # planner 제출자라면 랜덤 범위 요청 추가
+    if user_id in submitted:
+        try:
+            text = submitted[user_id]
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
+            chosen = random.choice(lines)
+            base_msg += f"\n📝 추가 인증 요청: `{chosen}` 공부 인증 사진도 함께 보내주세요!"
+        except Exception as e:
+            print(f"[ERROR] 인증 범위 추출 실패: {e}")
+
+    await channel.send(base_msg)
 
 async def check_missed():
     await bot.wait_until_ready()
