@@ -28,6 +28,34 @@ SUBMIT_FILE = "submitted_users.json"
 PAYBACK_FILE = "payback_records.json"
 ALLOWED_ITEMS = ["planner", "lunch", "dinner", "checkout"]
 
+def schedule_auth(user, channel, tag, time_str):
+    try:
+        target_time = datetime.strptime(time_str, "%H:%M").replace(
+            year=datetime.now(KST).year,
+            month=datetime.now(KST).month,
+            day=datetime.now(KST).day,
+            tzinfo=KST
+        )
+        alarm_time = target_time - timedelta(minutes=2)
+
+        if alarm_time < datetime.now(KST):
+            return  # 과거는 무시
+
+            scheduler.add_job(send_auth, DateTrigger(run_date=alarm_time), args=[user, channel, tag])
+
+# 인증 실패 알림 예약 (정각 기준)
+scheduler.add_job(check_and_alert, DateTrigger(run_date=target_time), args=[user, channel, key])
+
+        # 체크용 타임스탬프 기록
+        key = f"{user.id}-{tag}"
+        pending = load_json("pending_check.json")
+        pending[key] = alarm_time.strftime("%Y-%m-%d %H:%M:%S")
+        save_json("pending_check.json", pending)
+
+    except Exception as e:
+        print(f"[ERROR] 인증 예약 실패: {e}")
+
+
 def load_json(file):
     return json.load(open(file, encoding="utf-8")) if os.path.exists(file) else {}
 
@@ -79,6 +107,12 @@ async def send_auth(user, channel, tag):
             print(f"[ERROR] 인증 범위 추출 실패: {e}")
 
     await channel.send(base_msg)
+
+async def check_and_alert(user, channel, key):
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    verified = load_json("verified_users.json")
+    if verified.get(today, {}).get(key) != True:
+        await channel.send(f"{user.mention}님, ⛔ `{key.split('-')[1]}` 인증을 2분 내에 완료하지 않았습니다. 페이백이 적용되지 않습니다.")
 
 async def check_missed():
     await bot.wait_until_ready()
@@ -139,8 +173,8 @@ async def 인증(ctx, item: str):
     img_bytes = await ctx.message.attachments[0].read()
     now = datetime.now(KST)
 
+    # 📌 플래너 인증
     if item == "planner":
-        now = datetime.now(KST)
         if not (now.hour == 8 or (now.hour == 9 and now.minute == 0)):
             return await ctx.send("❌ 플래너 인증은 **오전 8시 ~ 9시 정각까지만** 가능합니다.")
 
@@ -154,8 +188,32 @@ async def 인증(ctx, item: str):
         schedule_auth(ctx.author, ctx.channel, "저녁 전", result["dinner"])
         schedule_auth(ctx.author, ctx.channel, "공부 종료 전", result["end"])
         return await ctx.send(f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}")
-    
-    else:
+
+    # 📌 그 외(lunch/dinner/checkout) 인증
+    if item in ["lunch", "dinner", "checkout"]:
+        tag_map = {
+            "lunch": "점심 전",
+            "dinner": "저녁 전",
+            "checkout": "공부 종료 전"
+        }
+        tag = tag_map[item]
+        key = f"{uid}-{tag}"
+
+        # 인증 성공 기록 (사진만 있으면 성공으로 간주)
+        verified = load_json("verified_users.json")
+        today = datetime.now(KST).strftime("%Y-%m-%d")
+        if today not in verified:
+            verified[today] = {}
+        verified[today][key] = True
+        save_json("verified_users.json", verified)
+
+        # 시간 초과 확인
+        pending = load_json("pending_check.json")
+        if key in pending:
+            expire_time = datetime.strptime(pending[key], "%Y-%m-%d %H:%M:%S").replace(tzinfo=KST) + timedelta(minutes=2)
+            if datetime.now(KST) > expire_time:
+                return await ctx.send(f"⏰ `{item}` 인증 시간이 지났습니다. 페이백이 적용되지 않습니다.")
+
         save_submission(uid)
         add_payback(uid, item)
         return await ctx.send(f"✅ `{item}` 인증 완료 + 페이백 적용!")
