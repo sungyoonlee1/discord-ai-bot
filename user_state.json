@@ -1,0 +1,15 @@
+{
+  "유저ID1": {
+    "planner_submitted": true,
+    "lunch_time": "11:30",
+    "dinner_time": "17:30",
+    "end_time": "21:30",
+    "current_mode": "off",  // off / lunch / dinner / checkout
+    "last_updated": "2025-06-21 08:32:45"
+  },
+  "유저ID2": {
+    "planner_submitted": false,
+    "current_mode": "on",
+    "last_updated": "2025-06-21 09:01:00"
+  }
+}
