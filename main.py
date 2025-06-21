@@ -41,20 +41,20 @@ def schedule_auth(user, channel, tag, time_str):
         if alarm_time < datetime.now(KST):
             return  # 과거는 무시
 
-            scheduler.add_job(send_auth, DateTrigger(run_date=alarm_time), args=[user, channel, tag])
+        # 인증 요청 예약
+        scheduler.add_job(send_auth, DateTrigger(run_date=alarm_time), args=[user, channel, tag])
 
-# 인증 실패 알림 예약 (정각 기준)
-scheduler.add_job(check_and_alert, DateTrigger(run_date=target_time), args=[user, channel, key])
-
-        # 체크용 타임스탬프 기록
+        # 인증 실패 알림 예약 (정각 기준)
         key = f"{user.id}-{tag}"
+        scheduler.add_job(check_and_alert, DateTrigger(run_date=target_time), args=[user, channel, key])
+
+        # 타임스탬프 기록
         pending = load_json("pending_check.json")
         pending[key] = alarm_time.strftime("%Y-%m-%d %H:%M:%S")
         save_json("pending_check.json", pending)
 
     except Exception as e:
         print(f"[ERROR] 인증 예약 실패: {e}")
-
 
 def load_json(file):
     return json.load(open(file, encoding="utf-8")) if os.path.exists(file) else {}
