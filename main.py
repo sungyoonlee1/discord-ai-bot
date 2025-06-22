@@ -233,7 +233,7 @@ async def on_message(msg):
         return
 
     # 2️⃣ 사진만 보냈는지 확인
-    if not msg.attachments or msg.content.strip():
+    if not msg.attachments:
         return
 
     uid = str(msg.author.id)
