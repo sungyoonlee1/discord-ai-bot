@@ -183,6 +183,7 @@ async def check_missed():
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    reset_all_user_modes()  # ✅ 실행 시작 시에도 초기화
     scheduler.add_job(check_missed, "cron", hour=9, minute=0, timezone=KST)
     scheduler.add_job(send_announcement, "cron", hour=8, minute=0, timezone=KST,
                       args=[공지사항채널ID, "📢 플래너 인증 시간입니다! 오전 9시까지 제출해 주세요."])
@@ -218,6 +219,7 @@ def reset_all_user_modes():
     data = load_user_state()
     for uid in data:
         data[uid]["current_mode"] = "on"
+        data[uid]["planner_submitted"] = False  # ✅ 매일 아침 플래너 제출 상태 초기화
         data[uid]["last_updated"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
     save_user_state(data)
 
