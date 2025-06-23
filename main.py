@@ -341,7 +341,10 @@ async def on_message(msg):
     # 5️⃣ 그 외에도 항상 명령어 인식되도록
     await bot.process_commands(msg)
 
-
 if __name__ == "__main__":
-    bot.run(TOKEN)  # ✅ 실행 유지됨
+    import asyncio
 
+    async def main():
+        await bot.start(TOKEN)
+
+    asyncio.run(main())
