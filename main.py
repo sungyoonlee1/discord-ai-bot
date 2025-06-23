@@ -282,8 +282,8 @@ async def on_message(msg):
             return
 
         print(f"📩 메시지 감지: {msg.content}")
-        print(f"📎 첨부파일 목록: {msg.attachments}")
-        
+        print(f"📎 찾음파일 목록: {msg.attachments}")
+
         now = datetime.now(KST)
 
         # 1️⃣ 00시 ~ 08시: 사진 무시
@@ -310,13 +310,13 @@ async def on_message(msg):
                 await msg.channel.send(f"[디버깅용] 분석결과: {result}")
             except Exception as e:
                 import traceback
-                print("🛑 분석 중 오류 발생")
+                print("🔝 분석 중 오류 발생")
                 traceback.print_exc()
                 await msg.channel.send(f"❌ GPT 분석 도중 오류 발생: {e}")
                 return
 
             if not isinstance(result, dict):
-                await msg.channel.send("❌ 분석 결과 형식이 잘못되었습니다.")
+                await msg.channel.send("❌ 분석 결과 형식이 잘못되어있습니다.")
                 return
 
             if "error" in result:
@@ -326,16 +326,16 @@ async def on_message(msg):
             update_user_state(uid, current_mode="off", planner_submitted=True)
             save_submission(uid)
             add_payback(uid, "planner")
-                
+
             print("🧪 현재 모드:", mode)
-            print("🧪 제출 여부:", submitted)
+            print("🧪 제주 유무:", submitted)
 
             schedule_auth(msg.author, msg.channel, "점심 전", result["lunch"])
             schedule_auth(msg.author, msg.channel, "저녁 전", result["dinner"])
-            schedule_auth(msg.author, msg.channel, "공부 종료 전", result["end"])
+            schedule_auth(msg.author, msg.channel, "공백 종료 전", result["end"])
 
             await msg.channel.send(
-                f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}"
+                f"✅ 플래너 제주 완료 + 페이벡 적재!\n📊 분석결과: {result}"
             )
             await bot.process_commands(msg)
             return
@@ -345,7 +345,7 @@ async def on_message(msg):
             mode_map = {
                 "lunch": "점심 전",
                 "dinner": "저녁 전",
-                "checkout": "공부 종료 전"
+                "checkout": "공백 종료 전"
             }
             tag = mode_map[mode]
             key = f"{uid}-{tag}"
@@ -361,13 +361,13 @@ async def on_message(msg):
             if key in pending:
                 expire_time = datetime.strptime(pending[key], "%Y-%m-%d %H:%M:%S").replace(tzinfo=KST) + timedelta(minutes=2)
                 if datetime.now(KST) > expire_time:
-                    await msg.channel.send(f"⏰ `{mode}` 인증 시간이 지났습니다. 페이백이 적용되지 않습니다.")
+                    await msg.channel.send(f"⏰ `{mode}` 인증 시간이 지나였습니다. 페이벡이 적재되지 않습니다.")
                     await bot.process_commands(msg)
                     return
 
             save_submission(uid)
             add_payback(uid, mode)
-            await msg.channel.send(f"✅ `{mode}` 인증 완료 + 페이백 적용!")
+            await msg.channel.send(f"✅ `{mode}` 인증 완료 + 페이벡 적재!")
             await bot.process_commands(msg)
             return
 
@@ -376,8 +376,59 @@ async def on_message(msg):
 
     except Exception as e:
         import traceback
-        print(f"🛑 on_message 예외 발생: {e}")
+        print(f"🔝 on_message 예외 발생: {e}")
         traceback.print_exc()
+
+
+# 📌 수정된 analyze_image_and_feedback 함수
+from openai import AsyncOpenAI
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+
+async def analyze_image_and_feedback(image_bytes):
+    print("\U0001f9ea analyze_image_and_feedback 호출됨")
+    b64 = convert_image_to_base64(image_bytes)
+    if not b64:
+        return {"error": "이미지를 base64로 변환하는 데 실패했습니다."}
+
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "\ub2e4\uc74c\uc740 \uacf5\ubc31 \ud50c\ub798\ub108 \uc0ac\uc9c4\uc785\ub2c8\ub2e4. \uac01 \ud56d\ubaa9\uc744 \ub2e4\uc74c 3\uac00\uc9c0 \uc911 \ud558\ub098\ub85c \ubd84\ub958\ud558\uc138\uc694:\n(1) \uc2dc\uac04 \uacfc\ub150 \ubd84\ub7c9\n(2) \uc2dc\uac04 (\uc810\uc2ec/\uc800\ub141)\n(3) \uc2dc\uac04 (\uae30\ud0c0 \uc77c\uc815)\n\uadf8 \uc911 \uc810\uc2ec/\uc800\ub141/\ub9c8\uc9c0\ub9c9 \uacf5\ubc31 \uc885\ub8cc \uc2dc\uac04\ub9cc \ucd94\ub7b5\uc5d0\uc11c \uc544\ub798 \ud615\uc2dd\uc73c\ub85c JSON \ucd9c\ub825:\n{\"lunch\":\"13:00\", \"dinner\":\"18:00\", \"end\":\"22:00\"}"
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{b64}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=300
+        )
+
+        content = response.choices[0].message.content.strip()
+        print("\U0001f9e0 GPT 응답:", content)
+
+        if not content:
+            return {"error": "GPT 응답이 비어 있습니다."}
+
+        json_text = extract_json(content)
+        if not json_text:
+            return {"error": f"응답에서 JSON을 찾을 수 없습니다:\n{content}"}
+
+        return json.loads(json_text)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     bot.run(TOKEN)
