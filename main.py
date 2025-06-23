@@ -318,7 +318,7 @@ async def on_message(msg):
 
     save_submission(uid)
     add_payback(uid, mode)
-    return await msg.channel.send(f"✅ `{mode}` 인증 완료 + 페이백 적용!")
+    await msg.channel.send(f"✅ `{mode}` 인증 완료 + 페이백 적용!")
 
     # 5️⃣ 명령어 처리
     await bot.process_commands(msg)
