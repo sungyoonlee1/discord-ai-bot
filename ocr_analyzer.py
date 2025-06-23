@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-client = openai.OpenAI(api_key=OPENAI_API_KEY)
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 def convert_image_to_base64(image_bytes):
     try:
@@ -28,6 +28,7 @@ def extract_json(text):
     return None
 
 async def analyze_image_and_feedback(image_bytes):
+    print("🧪 analyze_image_and_feedback 호출됨")
     b64 = convert_image_to_base64(image_bytes)
     if not b64:
         return {"error": "이미지를 base64로 변환하는 데 실패했습니다."}
