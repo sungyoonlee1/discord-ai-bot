@@ -45,21 +45,18 @@ def schedule_auth(user, channel, tag, time_str):
         alarm_time = target_time - timedelta(minutes=2)
 
         if alarm_time < datetime.now(KST):
-            return  # 과거는 무시
+            print(f"[SKIP] 이미 지난 인증 시간: {tag} ({alarm_time})")
+            return
 
-        # 인증 요청 예약
         scheduler.add_job(send_auth, DateTrigger(run_date=alarm_time), args=[user, channel, tag])
 
-        # 인증 실패 알림 예약
         key = f"{user.id}-{tag}"
         scheduler.add_job(check_and_alert, DateTrigger(run_date=target_time), args=[user, channel, key])
 
-        # 타임스탬프 기록
         pending = load_json("pending_check.json")
         pending[key] = alarm_time.strftime("%Y-%m-%d %H:%M:%S")
         save_json("pending_check.json", pending)
 
-        # ✅ 추가: 인증 시간대에만 on 모드 설정
         mode_map = {
             "점심 전": "lunch",
             "저녁 전": "dinner",
@@ -68,8 +65,10 @@ def schedule_auth(user, channel, tag, time_str):
         if tag in mode_map:
             schedule_mode_switch(user.id, mode_map[tag], time_str)
 
+        print(f"[예약 완료] {tag} 알람 등록 ({alarm_time}) → 모드: {mode_map.get(tag)}")
+
     except Exception as e:
-        print(f"[ERROR] 인증 예약 실패: {e}")  # ← 이 줄이 반드시 필요해!
+        print(f"[ERROR] 인증 예약 실패 ({tag}): {e}")
 
 # 여기서부터는 try 밖에서 정의
 def set_user_mode(user_id, new_mode):
