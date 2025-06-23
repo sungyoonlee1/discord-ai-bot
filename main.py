@@ -270,12 +270,18 @@ async def 알람확인(ctx, user_id: str = None):
     
     await ctx.send(reply)
 
+@bot.command()
+async def 상태초기화(ctx):
+    update_user_state(str(ctx.author.id), current_mode="on", planner_submitted=False)
+    await ctx.send("✅ 상태 초기화 완료! 다시 플래너 사진을 제출해주세요.")
+
 @bot.event
 async def on_message(msg):
     if msg.author.bot:
         return
 
     print(f"📩 메시지 감지: {msg.content}")
+    print(f"📎 첨부파일 목록: {msg.attachments}")
     
     now = datetime.now(KST)
 
@@ -309,6 +315,9 @@ async def on_message(msg):
         update_user_state(uid, current_mode="off", planner_submitted=True)
         save_submission(uid)
         add_payback(uid, "planner")
+            
+        print("🧪 현재 모드:", mode)
+        print("🧪 제출 여부:", submitted)
 
         schedule_auth(msg.author, msg.channel, "점심 전", result["lunch"])
         schedule_auth(msg.author, msg.channel, "저녁 전", result["dinner"])
