@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-
 def convert_image_to_base64(image_bytes):
     try:
         image = Image.open(BytesIO(image_bytes))
@@ -21,13 +20,11 @@ def convert_image_to_base64(image_bytes):
     except Exception:
         return None
 
-
 def extract_json(text):
     match = re.search(r'\{.*?\}', text, re.DOTALL)
     if match:
         return match.group()
     return None
-
 
 async def analyze_image_and_feedback(image_bytes):
     b64 = convert_image_to_base64(image_bytes)
@@ -35,7 +32,7 @@ async def analyze_image_and_feedback(image_bytes):
         return {"error": "이미지를 base64로 변환하는 데 실패했습니다."}
 
     try:
-        response = openai.chat.completions.create(
+        response = await openai.ChatCompletion.acreate(  # ✅ 비동기 버전으로 변경
             model="gpt-4o",
             messages=[
                 {
@@ -76,4 +73,3 @@ async def analyze_image_and_feedback(image_bytes):
 
     except Exception as e:
         return {"error": str(e)}
-
