@@ -223,6 +223,29 @@ def reset_all_user_modes():
         data[uid]["last_updated"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
     save_user_state(data)
 
+@bot.command()
+async def 알람확인(ctx, user_id: str = None):
+    if not user_id:
+        return await ctx.send("❌ user_id를 입력해 주세요. 예: `!알람확인 1234567890`")
+    
+    state = load_user_state()
+    user_info = state.get(user_id)
+    
+    if not user_info:
+        return await ctx.send(f"❌ 해당 user_id `{user_id}` 정보를 찾을 수 없습니다.")
+    
+    reply = (
+        f"📋 **유저 상태 정보 ({user_id})**\n"
+        f"- 📌 current_mode: `{user_info.get('current_mode')}`\n"
+        f"- ✅ planner_submitted: `{user_info.get('planner_submitted')}`\n"
+        f"- 🍽 lunch_time: `{user_info.get('lunch_time' or '미지정')}`\n"
+        f"- 🍱 dinner_time: `{user_info.get('dinner_time' or '미지정')}`\n"
+        f"- 💤 end_time: `{user_info.get('end_time' or '미지정')}`\n"
+        f"- ⏱ last_updated: `{user_info.get('last_updated')}`"
+    )
+    
+    await ctx.send(reply)
+
 @bot.event
 async def on_message(msg):
     if msg.author.bot:
