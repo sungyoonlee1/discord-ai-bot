@@ -277,91 +277,97 @@ async def 상태초기화(ctx):
 
 @bot.event
 async def on_message(msg):
-    if msg.author.bot:
-        return
+    try:
+        if msg.author.bot:
+            return
 
-    print(f"📩 메시지 감지: {msg.content}")
-    print(f"📎 첨부파일 목록: {msg.attachments}")
-    
-    now = datetime.now(KST)
+        print(f"📩 메시지 감지: {msg.content}")
+        print(f"📎 첨부파일 목록: {msg.attachments}")
+        
+        now = datetime.now(KST)
 
-    # 1️⃣ 00시 ~ 08시: 사진 무시
-    if now.hour < 8:
-        await bot.process_commands(msg)
-        return
-
-    # 2️⃣ 사진이 없는 경우 명령어만 처리
-    if not msg.attachments:
-        await bot.process_commands(msg)
-        return
-
-    uid = str(msg.author.id)
-    state = load_user_state().get(uid, {})
-    mode = state.get("current_mode", "off")
-    submitted = state.get("planner_submitted", False)
-
-    # 3️⃣ 플래너 자동 분석
-    if mode == "on" and not submitted:
-        img_bytes = await msg.attachments[0].read()
-        result = await analyze_image_and_feedback(img_bytes)
-        print("분석 결과:", result)
-        await msg.channel.send(f"[디버깅용] 분석결과: {result}")
-
-        if "error" in result:
-            await msg.channel.send(f"❌ GPT 분석 실패: {result['error']}")
+        # 1️⃣ 00시 ~ 08시: 사진 무시
+        if now.hour < 8:
             await bot.process_commands(msg)
             return
 
-        update_user_state(uid, current_mode="off", planner_submitted=True)
-        save_submission(uid)
-        add_payback(uid, "planner")
-            
-        print("🧪 현재 모드:", mode)
-        print("🧪 제출 여부:", submitted)
+        # 2️⃣ 사진이 없는 경우 명령어만 처리
+        if not msg.attachments:
+            await bot.process_commands(msg)
+            return
 
-        schedule_auth(msg.author, msg.channel, "점심 전", result["lunch"])
-        schedule_auth(msg.author, msg.channel, "저녁 전", result["dinner"])
-        schedule_auth(msg.author, msg.channel, "공부 종료 전", result["end"])
+        uid = str(msg.author.id)
+        state = load_user_state().get(uid, {})
+        mode = state.get("current_mode", "off")
+        submitted = state.get("planner_submitted", False)
 
-        await msg.channel.send(
-            f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}"
-        )
-        await bot.process_commands(msg)
-        return
+        # 3️⃣ 플래너 자동 분석
+        if mode == "on" and not submitted:
+            img_bytes = await msg.attachments[0].read()
+            result = await analyze_image_and_feedback(img_bytes)
+            print("분석 결과:", result)
+            await msg.channel.send(f"[디버깅용] 분석결과: {result}")
 
-    # 4️⃣ 인증 응답
-    if mode in ["lunch", "dinner", "checkout"] and submitted:
-        mode_map = {
-            "lunch": "점심 전",
-            "dinner": "저녁 전",
-            "checkout": "공부 종료 전"
-        }
-        tag = mode_map[mode]
-        key = f"{uid}-{tag}"
-
-        verified = load_json("verified_users.json")
-        today = datetime.now(KST).strftime("%Y-%m-%d")
-        if today not in verified:
-            verified[today] = {}
-        verified[today][key] = True
-        save_json("verified_users.json", verified)
-
-        pending = load_json("pending_check.json")
-        if key in pending:
-            expire_time = datetime.strptime(pending[key], "%Y-%m-%d %H:%M:%S").replace(tzinfo=KST) + timedelta(minutes=2)
-            if datetime.now(KST) > expire_time:
-                await msg.channel.send(f"⏰ `{mode}` 인증 시간이 지났습니다. 페이백이 적용되지 않습니다.")
+            if "error" in result:
+                await msg.channel.send(f"❌ GPT 분석 실패: {result['error']}")
                 await bot.process_commands(msg)
                 return
 
-        save_submission(uid)
-        add_payback(uid, mode)
-        await msg.channel.send(f"✅ `{mode}` 인증 완료 + 페이백 적용!")
-        await bot.process_commands(msg)
-        return
+            update_user_state(uid, current_mode="off", planner_submitted=True)
+            save_submission(uid)
+            add_payback(uid, "planner")
+                
+            print("🧪 현재 모드:", mode)
+            print("🧪 제출 여부:", submitted)
 
-    # 5️⃣ 그 외에도 항상 명령어 인식되도록
-    await bot.process_commands(msg)
+            schedule_auth(msg.author, msg.channel, "점심 전", result["lunch"])
+            schedule_auth(msg.author, msg.channel, "저녁 전", result["dinner"])
+            schedule_auth(msg.author, msg.channel, "공부 종료 전", result["end"])
+
+            await msg.channel.send(
+                f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}"
+            )
+            await bot.process_commands(msg)
+            return
+
+        # 4️⃣ 인증 응답
+        if mode in ["lunch", "dinner", "checkout"] and submitted:
+            mode_map = {
+                "lunch": "점심 전",
+                "dinner": "저녁 전",
+                "checkout": "공부 종료 전"
+            }
+            tag = mode_map[mode]
+            key = f"{uid}-{tag}"
+
+            verified = load_json("verified_users.json")
+            today = datetime.now(KST).strftime("%Y-%m-%d")
+            if today not in verified:
+                verified[today] = {}
+            verified[today][key] = True
+            save_json("verified_users.json", verified)
+
+            pending = load_json("pending_check.json")
+            if key in pending:
+                expire_time = datetime.strptime(pending[key], "%Y-%m-%d %H:%M:%S").replace(tzinfo=KST) + timedelta(minutes=2)
+                if datetime.now(KST) > expire_time:
+                    await msg.channel.send(f"⏰ `{mode}` 인증 시간이 지났습니다. 페이백이 적용되지 않습니다.")
+                    await bot.process_commands(msg)
+                    return
+
+            save_submission(uid)
+            add_payback(uid, mode)
+            await msg.channel.send(f"✅ `{mode}` 인증 완료 + 페이백 적용!")
+            await bot.process_commands(msg)
+            return
+
+        # 5️⃣ 그 외에도 항상 명령어 인식되도록
+        await bot.process_commands(msg)
+
+    except Exception as e:
+        import traceback
+        print(f"🛑 on_message 예외 발생: {e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     bot.run(TOKEN)
