@@ -248,6 +248,10 @@ async def 알람확인(ctx, user_id: str = None):
 
 @bot.event
 async def on_message(msg):
+    print(f"📩 메시지 감지: {msg.content}")
+
+@bot.event
+async def on_message(msg):
     if msg.author.bot:
         return
 
