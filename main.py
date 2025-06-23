@@ -16,6 +16,10 @@ from ocr_analyzer import analyze_image_and_feedback
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not TOKEN:
+    print("❌ DISCORD_BOT_TOKEN 환경변수 없음")
+if not OPENAI_API_KEY:
+    print("❌ OPENAI_API_KEY 환경변수 없음")
 
 intents = discord.Intents.default()
 intents.message_content = True
