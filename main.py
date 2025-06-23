@@ -342,13 +342,4 @@ async def on_message(msg):
     await bot.process_commands(msg)
 
 if __name__ == "__main__":
-    import asyncio
-
-    async def main():
-        try:
-            print(f"[DEBUG] TOKEN: {TOKEN}")  # ← 이거 찍어봐야 함
-            await bot.start(TOKEN)
-        except Exception as e:
-            print(f"[CRITICAL] 봇 실행 중 오류 발생: {e}")
-
-    asyncio.run(main())
+    bot.run(TOKEN)
