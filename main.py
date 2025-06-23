@@ -324,4 +324,5 @@ async def on_message(msg):
     await bot.process_commands(msg)
 
 if __name__ == "__main__":
-    asyncio.run(bot.start(TOKEN))
+    bot.run(TOKEN)  # ✅ 실행 유지됨
+
