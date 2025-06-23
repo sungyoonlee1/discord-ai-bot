@@ -3,13 +3,14 @@ import base64
 import json
 import os
 import re
-
 from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
 
 load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 def convert_image_to_base64(image_bytes):
     try:
@@ -32,7 +33,7 @@ async def analyze_image_and_feedback(image_bytes):
         return {"error": "이미지를 base64로 변환하는 데 실패했습니다."}
 
     try:
-        response = await openai.ChatCompletion.acreate(  # ✅ 비동기 버전으로 변경
+        response = await client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
