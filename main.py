@@ -18,8 +18,10 @@ TOKEN = os.getenv("DISCORD_BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not TOKEN:
     print("❌ DISCORD_BOT_TOKEN 환경변수 없음")
+    exit(1)
 if not OPENAI_API_KEY:
     print("❌ OPENAI_API_KEY 환경변수 없음")
+    exit(1)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -351,4 +353,7 @@ if __name__ == "__main__":
     async def main():
         await bot.start(TOKEN)
 
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"[MAIN ERROR] {e}")
