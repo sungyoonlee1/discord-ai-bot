@@ -429,6 +429,22 @@ async def analyze_image_and_feedback(image_bytes):
         traceback.print_exc()
         return {"error": str(e)}
 
+# ✅ Railway에서 컨테이너 유지용 Flask 서버 추가
+from flask import Flask
+from threading import Thread
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "I'm alive"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+# ✅ 봇 실행과 별개로 Flask 서버도 병렬로 실행
+Thread(target=run).start()
+
 if __name__ == "__main__":
     bot.run(TOKEN)
 
