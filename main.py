@@ -298,6 +298,8 @@ async def on_message(msg):
     if mode == "on" and not submitted:
         img_bytes = await msg.attachments[0].read()
         result = await analyze_image_and_feedback(img_bytes)
+        print("분석 결과:", result)
+await msg.channel.send(f"[디버깅용] 분석결과: {result}")
 
         if "error" in result:
             await msg.channel.send(f"❌ GPT 분석 실패: {result['error']}")
