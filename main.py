@@ -353,18 +353,5 @@ async def on_message(msg):
     await bot.process_commands(msg)
 
 if __name__ == "__main__":
-    import asyncio
-    import traceback
+    bot.run(TOKEN)
 
-    async def main():
-        try:
-            await bot.start(TOKEN)
-        except Exception as e:
-            print("[BOT START ERROR]", e)
-            traceback.print_exc()
-
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        print("[ASYNCIO RUN ERROR]", e)
-        traceback.print_exc()
