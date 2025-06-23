@@ -182,15 +182,28 @@ async def check_missed():
 
 @bot.event
 async def on_ready():
-    print(f"✅ Logged in as {bot.user}")
-    reset_all_user_modes()  # ✅ 실행 시작 시에도 초기화
-    scheduler.add_job(check_missed, "cron", hour=9, minute=0, timezone=KST)
-    scheduler.add_job(send_announcement, "cron", hour=8, minute=0, timezone=KST,
-                      args=[공지사항채널ID, "📢 플래너 인증 시간입니다! 오전 9시까지 제출해 주세요."])
-    scheduler.add_job(reset_all_user_modes, "cron", hour=8, minute=0, timezone=KST)
-    scheduler.add_job(send_announcement, "cron", hour=9, minute=0, timezone=KST,
-                      args=[공지사항채널ID, "⛔ 오전 9시 마감! 이제 제출해도 페이백은 불가합니다."])
-    scheduler.start()
+    try:
+        print(f"✅ Logged in as {bot.user}")
+
+        print("🔁 사용자 모드 초기화 시작")
+        reset_all_user_modes()
+        print("✅ 사용자 모드 초기화 완료")
+
+        print("📅 스케줄러 작업 추가 중...")
+
+        scheduler.add_job(check_missed, "cron", hour=9, minute=0, timezone=KST)
+        scheduler.add_job(send_announcement, "cron", hour=8, minute=0, timezone=KST,
+                          args=[공지사항채널ID, "📢 플래너 인증 시간입니다! 오전 9시까지 제출해 주세요."])
+        scheduler.add_job(reset_all_user_modes, "cron", hour=8, minute=0, timezone=KST)
+        scheduler.add_job(send_announcement, "cron", hour=9, minute=0, timezone=KST,
+                          args=[공지사항채널ID, "⛔ 오전 9시 마감! 이제 제출해도 페이백은 불가합니다."])
+
+        scheduler.start()
+        print("✅ 스케줄러 시작 완료")
+
+    except Exception as e:
+        print(f"[on_ready ERROR] {e}")
+
 
 @bot.event
 async def on_member_join(member):
