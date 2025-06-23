@@ -304,13 +304,23 @@ async def on_message(msg):
         # 3️⃣ 플래너 자동 분석
         if mode == "on" and not submitted:
             img_bytes = await msg.attachments[0].read()
-            result = await analyze_image_and_feedback(img_bytes)
-            print("분석 결과:", result)
-            await msg.channel.send(f"[디버깅용] 분석결과: {result}")
+            try:
+                result = await analyze_image_and_feedback(img_bytes)
+                print("분석 결과:", result)
+                await msg.channel.send(f"[디버깅용] 분석결과: {result}")
+            except Exception as e:
+                import traceback
+                print("🛑 분석 중 오류 발생")
+                traceback.print_exc()
+                await msg.channel.send(f"❌ GPT 분석 도중 오류 발생: {e}")
+                return
+
+            if not isinstance(result, dict):
+                await msg.channel.send("❌ 분석 결과 형식이 잘못되었습니다.")
+                return
 
             if "error" in result:
                 await msg.channel.send(f"❌ GPT 분석 실패: {result['error']}")
-                await bot.process_commands(msg)
                 return
 
             update_user_state(uid, current_mode="off", planner_submitted=True)
