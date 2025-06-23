@@ -210,6 +210,11 @@ async def on_ready():
     except Exception as e:
         print(f"[on_ready ERROR] {e}")
 
+@bot.event
+async def on_error(event, *args, **kwargs):
+    import traceback
+    print(f"[on_error] event: {event}")
+    traceback.print_exc()
 
 @bot.event
 async def on_member_join(member):
