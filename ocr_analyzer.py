@@ -61,7 +61,7 @@ async def analyze_image_and_feedback(image_bytes):
             max_tokens=300
         )
 
-        content = response.choices[0].message['content'].strip()
+        content = response.choices[0].message.content.strip()  # ✅ 여기 수정됨
         print("🧠 GPT 응답:", content)
 
         if not content:
