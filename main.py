@@ -1,6 +1,6 @@
 # ✅ main.py
 공지사항채널ID = 1381470992551120982
-from fastapi import FastAPI
+from flask import Flask
 import uvicorn
 import discord
 from discord.ext import commands
