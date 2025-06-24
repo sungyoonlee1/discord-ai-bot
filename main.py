@@ -233,6 +233,10 @@ async def on_member_join(member):
     await ch.send(f"{member.mention}님, 전용 공부 비서 채널이 생성됐습니다.\n📸 **아침 9시 전까지 플래너를 제출**하면 페이백 대상이 됩니다!")
 
 @bot.command()
+async def 알림테스트(ctx):
+    await send_announcement(ctx.channel.id, "🧪 테스트 알림입니다! 지금은 수동으로 호출한 메시지입니다.")
+
+@bot.command()
 async def 페이백(ctx):
     uid = str(ctx.author.id)
     today = datetime.now(KST).strftime("%Y-%m-%d")
