@@ -308,7 +308,7 @@ async def on_message(msg):
             return
 
         print(f"📩 메시지 감지: {msg.content}")
-        print(f"📎 찾음파일 목록: {msg.attachments}")
+        print(f"📎 첨부파일 목록: {msg.attachments}")
 
         now = datetime.now(KST)
 
@@ -327,6 +327,8 @@ async def on_message(msg):
         mode = state.get("current_mode", "off")
         submitted = state.get("planner_submitted", False)
 
+        print(f"🧾 상태 확인: mode = {mode}, submitted = {submitted}")  # 🔥 핵심 디버깅 줄
+
         # 3️⃣ 플래너 자동 분석
         if mode == "on" and not submitted:
             img_bytes = await msg.attachments[0].read()
@@ -336,7 +338,7 @@ async def on_message(msg):
                 await msg.channel.send(f"[디버깅용] 분석결과: {result}")
             except Exception as e:
                 import traceback
-                print("🔝 분석 중 오류 발생")
+                print("🛑 분석 중 오류 발생")
                 traceback.print_exc()
                 await msg.channel.send(f"❌ GPT 분석 도중 오류 발생: {e}")
                 return
@@ -354,14 +356,14 @@ async def on_message(msg):
             add_payback(uid, "planner")
 
             print("🧪 현재 모드:", mode)
-            print("🧪 제주 유무:", submitted)
+            print("🧪 제출 여부:", submitted)
 
             schedule_auth(msg.author, msg.channel, "점심 전", result["lunch"])
             schedule_auth(msg.author, msg.channel, "저녁 전", result["dinner"])
-            schedule_auth(msg.author, msg.channel, "공백 종료 전", result["end"])
+            schedule_auth(msg.author, msg.channel, "공부 종료 전", result["end"])
 
             await msg.channel.send(
-                f"✅ 플래너 제주 완료 + 페이벡 적재!\n📊 분석결과: {result}"
+                f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}"
             )
             await bot.process_commands(msg)
             return
@@ -371,7 +373,7 @@ async def on_message(msg):
             mode_map = {
                 "lunch": "점심 전",
                 "dinner": "저녁 전",
-                "checkout": "공백 종료 전"
+                "checkout": "공부 종료 전"
             }
             tag = mode_map[mode]
             key = f"{uid}-{tag}"
@@ -387,13 +389,13 @@ async def on_message(msg):
             if key in pending:
                 expire_time = datetime.strptime(pending[key], "%Y-%m-%d %H:%M:%S").replace(tzinfo=KST) + timedelta(minutes=2)
                 if datetime.now(KST) > expire_time:
-                    await msg.channel.send(f"⏰ `{mode}` 인증 시간이 지나였습니다. 페이벡이 적재되지 않습니다.")
+                    await msg.channel.send(f"⏰ `{mode}` 인증 시간이 지났습니다. 페이백이 적용되지 않습니다.")
                     await bot.process_commands(msg)
                     return
 
             save_submission(uid)
             add_payback(uid, mode)
-            await msg.channel.send(f"✅ `{mode}` 인증 완료 + 페이벡 적재!")
+            await msg.channel.send(f"✅ `{mode}` 인증 완료 + 페이백 적용!")
             await bot.process_commands(msg)
             return
 
@@ -402,7 +404,7 @@ async def on_message(msg):
 
     except Exception as e:
         import traceback
-        print(f"🔝 on_message 예외 발생: {e}")
+        print(f"🛑 on_message 예외 발생: {e}")
         traceback.print_exc()
 
 
