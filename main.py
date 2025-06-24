@@ -253,6 +253,27 @@ def reset_all_user_modes():
     save_user_state(data)
 
 @bot.command()
+async def 예약확인(ctx):
+    now = datetime.now(KST)
+    future = now + timedelta(hours=48)
+    
+    jobs = scheduler.get_jobs()
+    upcoming = []
+
+    for job in jobs:
+        run_time = job.next_run_time
+        if run_time and now <= run_time <= future:
+            desc = f"- [{run_time.strftime('%Y-%m-%d %H:%M:%S')}] {job.name or '알 수 없음'}"
+            upcoming.append(desc)
+    
+    if not upcoming:
+        await ctx.send("⏰ 48시간 이내 예정된 알림이 없습니다.")
+        return
+    
+    msg = "📅 앞으로 48시간 내 예정된 알림 목록:\n\n" + "\n".join(upcoming)
+    await ctx.send(msg)
+
+@bot.command()
 async def 알람확인(ctx, user_id: str = None):
     if not user_id:
         return await ctx.send("❌ user_id를 입력해 주세요. 예: `!알람확인 1234567890`")
