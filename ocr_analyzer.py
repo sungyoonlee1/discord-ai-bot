@@ -1,3 +1,4 @@
+# ✅ ocr_analyzer.py
 import base64
 import json
 import os
@@ -12,13 +13,15 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
+# ✅ 여기 반드시 있어야 작동함!!
 def convert_image_to_base64(image_bytes):
     try:
         image = Image.open(BytesIO(image_bytes))
         buffered = BytesIO()
         image.save(buffered, format="JPEG")
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
-    except Exception:
+    except Exception as e:
+        print("❌ base64 변환 실패:", e)
         return None
 
 def extract_json(text):
