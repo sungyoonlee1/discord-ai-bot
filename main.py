@@ -331,8 +331,8 @@ async def on_message(msg):
         print(f"🧾 상태 확인: mode = {mode}, submitted = {submitted}")  # 🔥 핵심 디버깅 줄
 
       # 3️⃣ 플래너 자동 분석
-       if mode == "on" and not submitted:
-           now = datetime.now(KST)
+        if mode == "on" and not submitted:
+            now = datetime.now(KST)
 
             img_bytes = await msg.attachments[0].read()
             try:
