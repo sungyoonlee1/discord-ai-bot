@@ -331,11 +331,8 @@ async def on_message(msg):
         print(f"🧾 상태 확인: mode = {mode}, submitted = {submitted}")  # 🔥 핵심 디버깅 줄
 
       # 3️⃣ 플래너 자동 분석
-        if mode == "on" and not submitted:
-            now = datetime.now(KST)
-            if now.hour >= 9:
-                await msg.channel.send("❌ 오전 9시 이후에는 플래너 제출 시 페이백이 적용되지 않습니다.")
-                return
+       if mode == "on" and not submitted:
+           now = datetime.now(KST)
 
             img_bytes = await msg.attachments[0].read()
             try:
@@ -359,7 +356,12 @@ async def on_message(msg):
 
             update_user_state(uid, current_mode="off", planner_submitted=True)
             save_submission(uid)
-            add_payback(uid, "planner")
+
+            if now.hour < 9:
+                add_payback(uid, "planner")
+                await msg.channel.send("✅ 플래너 제출 완료 + 페이백 적용!")
+            else:
+                await msg.channel.send("✅ 플래너 제출 완료 (❌ 페이백은 오전 9시 이전 제출 시에만 적용됩니다)")
 
             print("🧪 현재 모드:", mode)
             print("🧪 제출 여부:", submitted)
@@ -368,11 +370,10 @@ async def on_message(msg):
             schedule_auth(msg.author, msg.channel, "저녁 전", result["dinner"])
             schedule_auth(msg.author, msg.channel, "공부 종료 전", result["end"])
 
-            await msg.channel.send(
-                f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}"
-            )
+            await msg.channel.send(f"📊 분석결과: {result}")
             await bot.process_commands(msg)
             return
+
 
 
         # 4️⃣ 인증 응답
