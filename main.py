@@ -13,7 +13,8 @@ import json
 import asyncio
 import random
 from dotenv import load_dotenv
-from ocr_analyzer import analyze_image_and_feedback
+from ocr_analyzer import analyze_image_and_feedback, convert_image_to_base64
+
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_BOT_TOKEN")
@@ -407,56 +408,6 @@ async def on_message(msg):
         print(f"🛑 on_message 예외 발생: {e}")
         traceback.print_exc()
 
-
-# 📌 수정된 analyze_image_and_feedback 함수
-from openai import AsyncOpenAI
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-
-async def analyze_image_and_feedback(image_bytes):
-    print("\U0001f9ea analyze_image_and_feedback 호출됨")
-    b64 = convert_image_to_base64(image_bytes)
-    if not b64:
-        return {"error": "이미지를 base64로 변환하는 데 실패했습니다."}
-
-    try:
-        response = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "\ub2e4\uc74c\uc740 \uacf5\ubc31 \ud50c\ub798\ub108 \uc0ac\uc9c4\uc785\ub2c8\ub2e4. \uac01 \ud56d\ubaa9\uc744 \ub2e4\uc74c 3\uac00\uc9c0 \uc911 \ud558\ub098\ub85c \ubd84\ub958\ud558\uc138\uc694:\n(1) \uc2dc\uac04 \uacfc\ub150 \ubd84\ub7c9\n(2) \uc2dc\uac04 (\uc810\uc2ec/\uc800\ub141)\n(3) \uc2dc\uac04 (\uae30\ud0c0 \uc77c\uc815)\n\uadf8 \uc911 \uc810\uc2ec/\uc800\ub141/\ub9c8\uc9c0\ub9c9 \uacf5\ubc31 \uc885\ub8cc \uc2dc\uac04\ub9cc \ucd94\ub7b5\uc5d0\uc11c \uc544\ub798 \ud615\uc2dd\uc73c\ub85c JSON \ucd9c\ub825:\n{\"lunch\":\"13:00\", \"dinner\":\"18:00\", \"end\":\"22:00\"}"
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{b64}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            max_tokens=300
-        )
-
-        content = response.choices[0].message.content.strip()
-        print("\U0001f9e0 GPT 응답:", content)
-
-        if not content:
-            return {"error": "GPT 응답이 비어 있습니다."}
-
-        json_text = extract_json(content)
-        if not json_text:
-            return {"error": f"응답에서 JSON을 찾을 수 없습니다:\n{content}"}
-
-        return json.loads(json_text)
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return {"error": str(e)}
 
 from flask import Flask
 from threading import Thread
