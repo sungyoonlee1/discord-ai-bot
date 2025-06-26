@@ -13,15 +13,18 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
-# ✅ 여기 반드시 있어야 작동함!!
 def convert_image_to_base64(image_bytes):
     try:
+        from PIL import Image
+        from io import BytesIO
+        import base64
+
         image = Image.open(BytesIO(image_bytes))
         buffered = BytesIO()
         image.save(buffered, format="JPEG")
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
     except Exception as e:
-        print("❌ base64 변환 실패:", e)
+        print("❌ 이미지 변환 에러:", e)
         return None
 
 def extract_json(text):
