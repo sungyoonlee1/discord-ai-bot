@@ -328,11 +328,13 @@ async def on_message(msg):
         mode = state.get("current_mode", "off")
         submitted = state.get("planner_submitted", False)
 
-        print(f"🧾 상태 확인: mode = {mode}, submitted = {submitted}")  # 🔥 핵심 디버깅 줄
+        print(f"🧾 상태 확인: mode = {mode}, submitted = {submitted}")
 
-      # 3️⃣ 플래너 자동 분석
+        # 3️⃣ 플래너 자동 분석
         if mode == "on" and not submitted:
-            now = datetime.now(KST)
+            if now.hour >= 9:
+                await msg.channel.send("❌ 오전 9시 이후에는 플래너 제출 시 페이백이 적용되지 않습니다.")
+                return
 
             img_bytes = await msg.attachments[0].read()
             try:
@@ -354,27 +356,26 @@ async def on_message(msg):
                 await msg.channel.send(f"❌ GPT 분석 실패: {result['error']}")
                 return
 
-            update_user_state(uid, current_mode="off", planner_submitted=True)
-            save_submission(uid)
-
-            if now.hour < 9:
+            try:
+                save_submission(uid)
                 add_payback(uid, "planner")
-                await msg.channel.send("✅ 플래너 제출 완료 + 페이백 적용!")
-            else:
-                await msg.channel.send("✅ 플래너 제출 완료 (❌ 페이백은 오전 9시 이전 제출 시에만 적용됩니다)")
-
-            print("🧪 현재 모드:", mode)
-            print("🧪 제출 여부:", submitted)
+                update_user_state(uid, current_mode="off", planner_submitted=True)
+            except Exception as e:
+                import traceback
+                print("❌ 상태 저장 중 오류:", e)
+                traceback.print_exc()
+                await msg.channel.send("❌ 상태 저장 중 문제가 발생했습니다. 다시 제출해주세요.")
+                return
 
             schedule_auth(msg.author, msg.channel, "점심 전", result["lunch"])
             schedule_auth(msg.author, msg.channel, "저녁 전", result["dinner"])
             schedule_auth(msg.author, msg.channel, "공부 종료 전", result["end"])
 
-            await msg.channel.send(f"📊 분석결과: {result}")
+            await msg.channel.send(
+                f"✅ 플래너 제출 완료 + 페이백 적용!\n📊 분석결과: {result}"
+            )
             await bot.process_commands(msg)
             return
-
-
 
         # 4️⃣ 인증 응답
         if mode in ["lunch", "dinner", "checkout"] and submitted:
@@ -414,6 +415,7 @@ async def on_message(msg):
         import traceback
         print(f"🛑 on_message 예외 발생: {e}")
         traceback.print_exc()
+
 
 
 from flask import Flask
