@@ -415,7 +415,8 @@ async def on_message(msg):
         if mode in ["lunch", "dinner", "checkout"] and submitted:
             if not msg.attachments:
                 await msg.channel.send("❌ 인증 실패: 사진이 첨부되지 않았습니다.")
-            return
+                await bot.process_commands(msg)
+                return
                     
             mode_map = {
                 "lunch": "점심 전",
