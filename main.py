@@ -56,10 +56,28 @@ def schedule_auth(user, channel, tag, time_str):
         key = f"{user.id}-{tag}"
         scheduler.add_job(check_and_alert, DateTrigger(run_date=target_time), args=[user, channel, key])
 
+        # ✅ pending_check.json 기록
         pending = load_json("pending_check.json")
         pending[key] = alarm_time.strftime("%Y-%m-%d %H:%M:%S")
         save_json("pending_check.json", pending)
 
+        # ✅ 랜덤 인증 범위 저장
+        if tag in ["점심 전", "저녁 전", "공부 종료 전"]:
+            result = load_json("analyzed_result.json")
+            if str(user.id) not in result:
+                print(f"[WARN] 분석 결과 없음: {user.id}")
+                return
+            today = datetime.now(KST).strftime("%Y-%m-%d")
+            if today not in result[str(user.id)]:
+                print(f"[WARN] 오늘 분석 없음: {user.id}")
+                return
+            random_texts = result[str(user.id)][today].get(tag, [])
+            if random_texts:
+                choice = random.choice(random_texts)
+                result[str(user.id)][today][f"{tag}_choice"] = choice
+                save_json("analyzed_result.json", result)
+
+        # ✅ 모드 예약
         mode_map = {
             "점심 전": "lunch",
             "저녁 전": "dinner",
@@ -72,6 +90,7 @@ def schedule_auth(user, channel, tag, time_str):
 
     except Exception as e:
         print(f"[ERROR] 인증 예약 실패 ({tag}): {e}")
+
 
 # 여기서부터는 try 밖에서 정의
 def set_user_mode(user_id, new_mode):
@@ -151,22 +170,20 @@ async def send_announcement(channel_id, message):
         await channel.send(message)
 
 async def send_auth(user, channel, tag):
-    today = datetime.now(KST).strftime("%Y-%m-%d")
-    submitted = load_json(SUBMIT_FILE).get(today, {})
     user_id = str(user.id)
-
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+    
     # 기본 메시지
     base_msg = f"{user.mention}님, 📸 **{tag} 인증 시간**입니다! 사진을 보내주세요."
 
-    # planner 제출자라면 랜덤 범위 요청 추가
-    if user_id in submitted:
-        try:
-            text = submitted[user_id]
-            lines = [line.strip() for line in text.split("\n") if line.strip()]
-            chosen = random.choice(lines)
-            base_msg += f"\n📝 추가 인증 요청: `{chosen}` 공부 인증 사진도 함께 보내주세요!"
-        except Exception as e:
-            print(f"[ERROR] 인증 범위 추출 실패: {e}")
+    # analyzed_result.json에서 랜덤 인증 문구 확인
+    result = load_json("analyzed_result.json")
+    user_data = result.get(user_id, {}).get(today, {})
+    choice_key = f"{tag}_choice"
+    chosen = user_data.get(choice_key)
+
+    if chosen:
+        base_msg += f"\n📝 추가 인증 요청: `{chosen}` 공부 인증 사진도 함께 보내주세요!"
 
     await channel.send(base_msg)
 
@@ -356,6 +373,23 @@ async def on_message(msg):
                 await msg.channel.send(f"❌ GPT 분석 실패: {result['error']}")
                 return
 
+            analyzed_result = load_json("analyzed_result.json")
+            today = datetime.now(KST).strftime("%Y-%m-%d")
+
+            if uid not in analyzed_result:
+                analyzed_result[uid] = {}
+            if today not in analyzed_result[uid]:
+                analyzed_result[uid][today] = {}
+
+            for tag in ["점심 전", "저녁 전", "공부 종료 전"]:
+                items = result.get(tag, [])
+                if isinstance(items, list) and items:
+                    chosen = random.choice(items)
+                    analyzed_result[uid][today][tag] = items
+                    analyzed_result[uid][today][f"{tag}_choice"] = chosen
+
+            save_json("analyzed_result.json", analyzed_result)
+
             try:
                 save_submission(uid)
                 add_payback(uid, "planner")
@@ -379,6 +413,10 @@ async def on_message(msg):
 
         # 4️⃣ 인증 응답
         if mode in ["lunch", "dinner", "checkout"] and submitted:
+            if not msg.attachments:
+                await msg.channel.send("❌ 인증 실패: 사진이 첨부되지 않았습니다.")
+            return
+                    
             mode_map = {
                 "lunch": "점심 전",
                 "dinner": "저녁 전",
