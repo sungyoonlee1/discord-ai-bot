@@ -124,8 +124,12 @@ USER_STATE_FILE = "user_state.json"
 def load_user_state():
     return load_json(USER_STATE_FILE)
 
-def save_user_state(data):
-    save_json(USER_STATE_FILE, data)
+def save_json(file, data):
+    with open(file, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.flush()                 # 🔥 버퍼 강제 flush
+        os.fsync(f.fileno())      # 🔥 디스크에 강제 기록
+
 
 def update_user_state(user_id, **kwargs):
     uid = str(user_id)
@@ -212,6 +216,7 @@ async def on_ready():
 
         print("🔁 사용자 모드 초기화 시작")
         reset_all_user_modes()
+        await asyncio.sleep(2)
         print("✅ 사용자 모드 초기화 완료")
 
         print("📅 스케줄러 작업 추가 중...")
