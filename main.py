@@ -225,6 +225,7 @@ async def on_ready():
         scheduler.add_job(send_announcement, "cron", hour=8, minute=0, timezone=KST,
                           args=[공지사항채널ID, "📢 플래너 인증 시간입니다! 오전 9시까지 제출해 주세요."])
         scheduler.add_job(reset_all_user_modes, "cron", hour=8, minute=0, timezone=KST)
+        print("🕗 reset_all_user_modes 예약됨 (매일 8시)")
         scheduler.add_job(send_announcement, "cron", hour=9, minute=0, timezone=KST,
                           args=[공지사항채널ID, "⛔ 오전 9시 마감! 이제 제출해도 페이백은 불가합니다."])
 
@@ -268,6 +269,7 @@ async def 페이백(ctx):
     await ctx.send(f"💸 오늘 페이백: **{amt}원**")
 
 def reset_all_user_modes():
+    print("🔁 자동 사용자 상태 초기화 실행됨 (8시)")
     data = load_user_state()
     for uid in data:
         data[uid]["current_mode"] = "on"
