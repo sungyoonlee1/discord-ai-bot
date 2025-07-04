@@ -268,6 +268,8 @@ def reset_all_user_modes():
         data[uid]["current_mode"] = "on"
         data[uid]["planner_submitted"] = False  # ✅ 매일 아침 플래너 제출 상태 초기화
         data[uid]["last_updated"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M:%S")
+        
+    print("✅ 저장 직전 상태:", data)
     save_user_state(data)
 
 @bot.command()
