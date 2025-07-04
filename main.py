@@ -118,17 +118,17 @@ def load_json(file):
 def save_json(file, data):
     with open(file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+        f.flush()                 # 🔥 버퍼 강제 flush
+        os.fsync(f.fileno())      # 🔥 디스크에 강제 기록
 
 USER_STATE_FILE = "user_state.json"
 
 def load_user_state():
     return load_json(USER_STATE_FILE)
 
-def save_json(file, data):
-    with open(file, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        f.flush()                 # 🔥 버퍼 강제 flush
-        os.fsync(f.fileno())      # 🔥 디스크에 강제 기록
+def save_user_state(data):
+    save_json(USER_STATE_FILE, data)
+    print("📁 [user_state 저장됨]:", data)
 
 
 def update_user_state(user_id, **kwargs):
