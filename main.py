@@ -209,6 +209,35 @@ async def check_missed():
                 if ch:
                     await ch.send(f"{m.mention}님, 오늘 오전 9시까지 플래너 미제출로 **페이백 제외** ❌")
 
+async def send_daily_ranking():
+    channel = bot.get_channel(공지사항채널ID)
+    if not channel:
+        print("❌ 공지 채널을 찾을 수 없습니다.")
+        return
+
+    data = load_json(PAYBACK_FILE)
+    today = datetime.now(KST).strftime("%Y-%m-%d")
+
+    ranking = []
+    for uid, records in data.items():
+        total = records.get(today, {}).get("total", 0)
+        if total > 0:
+            ranking.append((uid, total))
+
+    if not ranking:
+        await channel.send("📊 오늘의 랭킹: 아직 인증 기록이 없습니다.")
+        return
+
+    ranking.sort(key=lambda x: x[1], reverse=True)
+    top = ranking[:5]
+
+    lines = ["🏆 **오늘의 페이백 랭킹!**"]
+    for i, (uid, total) in enumerate(top, 1):
+        member = await bot.fetch_user(int(uid))
+        lines.append(f"{i}위. {member.mention} — 💸 {total}원")
+
+    await channel.send("\n".join(lines))
+
 @bot.event
 async def on_ready():
     try:
@@ -228,6 +257,8 @@ async def on_ready():
         print("🕗 reset_all_user_modes 예약됨 (매일 8시)")
         scheduler.add_job(send_announcement, "cron", hour=9, minute=0, timezone=KST,
                           args=[공지사항채널ID, "⛔ 오전 9시 마감! 이제 제출해도 페이백은 불가합니다."])
+
+        scheduler.add_job(send_daily_ranking, "cron", hour=13, minute=0, timezone=KST)
 
         scheduler.start()
         print("✅ 스케줄러 시작 완료")
